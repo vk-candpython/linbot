@@ -1,13 +1,37 @@
 /*
  * Author   : Vladislav Khudash
  * Source   : https://github.com/vk-candpython/linbot/blob/main/lindef.h
- * Compiler : GCC
+ * Compiler : GCC (GNU)
  * Platform : Linux (x86_64)
  * Summary  : Standalone declarations and basic utilities.
 */
 
 
 #pragma once
+
+
+/************************************
+ *     COMPILATION REQUIREMENTS     *
+ ************************************/
+
+
+#if !defined(__GNUC__) || defined(__clang__)
+    #error "lindef.h: GCC compiler is required."
+#endif
+
+#if !defined(__linux__)
+    #error "lindef.h: Linux OS is required."
+#endif
+
+#if !defined(__x86_64__)
+    #error "lindef.h: x86_64 architecture is required."
+#endif
+
+#if !defined(__LP64__)
+    #error "lindef.h: LP64 ABI is required."
+#endif
+
+
 
 
 /*****************************
@@ -32,7 +56,7 @@ typedef __UINT16_TYPE__      UINT16;
 typedef __UINT32_TYPE__      UINT32;
 typedef __UINT64_TYPE__      UINT64;
 
-typedef signed   long int    LONG;
+typedef long int             LONG;
 typedef unsigned long int    ULONG;
 
 typedef __PTRDIFF_TYPE__     SSIZE_T;
@@ -70,8 +94,8 @@ typedef __SIZE_TYPE__        SIZE_T;
 /* Compile-time constant check */
 #define _CONSTANT_P(x) _GCC_FUNC(constant_p)((x))
 
-#define _UNLIKELY(x) _GCC_FUNC(expect)(not not (x), 0) // Branch prediction (cold)
-#define _LIKELY(x)   _GCC_FUNC(expect)(not not (x), 1) // Branch prediction (hot)
+#define _UNLIKELY(x) _GCC_FUNC(expect)(not not (x), FALSE) // Branch prediction (cold)
+#define _LIKELY(x)   _GCC_FUNC(expect)(not not (x), TRUE ) // Branch prediction (hot)
 
 
 /* Inform compiler that
@@ -106,7 +130,11 @@ typedef __SIZE_TYPE__        SIZE_T;
 
 /* Check for Linux syscall failure */
 #define SYSFAIL(status) \
-    _UNLIKELY((ULONG)(status) >= (ULONG)-MAX_ERRNO)
+    _UNLIKELY((ULONG)(status) >= (ULONG)(-MAX_ERRNO))
+
+/* Check for Linux syscall success */
+#define SYSOK(status) \
+    (not SYSFAIL(status))
 
 
 
@@ -135,8 +163,15 @@ typedef __SIZE_TYPE__        SIZE_T;
 #define SYS_socket        41
 #define SYS_connect       42
 #define SYS_exit_group    231
+#define SYS_getrandom     318
 
+
+/* */
+
+#define EINTR     4
 #define MAX_ERRNO 4095
+
+#define GRND_NONBLOCK 1
 
 
 /* Fcntl flags */
@@ -164,13 +199,17 @@ typedef __SIZE_TYPE__        SIZE_T;
 #define SOCK_STREAM 1
 #define IPPROTO_TCP 6
 
-#define SOCK_TIMEOUT 3000
+/* Retry delay: 5000ms base, 4095 mask (~3-7s range) */
+
+#define SOCK_RETRY_DELAY 5000UL
+#define SOCK_RETRY_MASK  4095UL
+
 
 struct sockaddr_in {
     UINT16    sin_family;
     UINT16    sin_port;
     UINT32    sin_addr;
-    UINT8     sin_zero[8];
+    BYTE      sin_zero[8];
 };
 
 
@@ -259,7 +298,7 @@ struct sockaddr_in {
 #define close(fd) \
     syscall(SYS_close, (fd))
 
-#define sys_sleep_ms(ms) \
+#define sys_sleep(ms) \
     syscall(SYS_poll, 0, 0, (ms))
 
 #define socket(domain, type, protocol) \
@@ -272,3 +311,6 @@ struct sockaddr_in {
     syscall(SYS_exit_group, (status));    \
     _UNREACHABLE();                       \
 } while (0)
+
+#define getrandom(buf, count, flags) \
+    syscall(SYS_getrandom, (buf), (count), (flags))
