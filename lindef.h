@@ -79,33 +79,37 @@ typedef __SIZE_TYPE__        SIZE_T;
 
 
 /* Compiler attribute wrapper helper */
-#define _GCC_ATTR(...) \
-    __attribute__((__VA_ARGS__))
+#define GCC_ATTR_(...) __attribute__((__VA_ARGS__))
 
 /* Compiler builtin shortcut */
-#define _GCC_FUNC(name) \
-    __builtin_##name
+#define GCC_FUNC_(name) __builtin_##name
 
 /* Compiler assembly block shorthand */
-#define _GCC_ASM \
-    __asm__ volatile
+#define GCC_ASM_ __asm__ volatile
 
+
+/* Load TYPE from memory at pointer (unaligned-safe) */
+#define LOAD_INT_(ptr, TYPE) ({                     \
+    TYPE _val;                                      \
+    GCC_FUNC_(memcpy)(&_val, ptr, sizeof(TYPE));    \
+    _val;                                           \
+})
 
 /* Compile-time constant check */
-#define _CONSTANT_P(x) _GCC_FUNC(constant_p)((x))
+#define CONSTANT_P_(x) GCC_FUNC_(constant_p)((x))
 
-#define _UNLIKELY(x) _GCC_FUNC(expect)(not not (x), FALSE) // Branch prediction (cold)
-#define _LIKELY(x)   _GCC_FUNC(expect)(not not (x), TRUE ) // Branch prediction (hot)
+#define UNLIKELY_(x) GCC_FUNC_(expect)(!!(x), 0) // Branch prediction (cold)
+#define LIKELY_(x)   GCC_FUNC_(expect)(!!(x), 1) // Branch prediction (hot)
 
 
 /* Inform compiler that
    this code path is never reached */
-#define _UNREACHABLE() _GCC_FUNC(unreachable)()
+#define UNREACHABLE_() GCC_FUNC_(unreachable)()
 
 
 /* Function declaration helper */
 #define DEC_FUNC(TYPE) \
-    static inline _GCC_ATTR(always_inline) TYPE
+    static inline GCC_ATTR_(always_inline) TYPE
 
 /* Register declaration helper */
 #define DEC_REG(TYPE, reg, val) \
@@ -113,28 +117,23 @@ typedef __SIZE_TYPE__        SIZE_T;
 
 /* Const-qualified pointer helper
    (const data and const pointer) */
-#define CONST_PTR(TYPE) \
-    const TYPE *const
+#define CONST_PTR(TYPE) const TYPE *const
 
 /* Restrict-qualified pointer helper
    (guarantees no memory aliasing) */
-#define RESTR_PTR(TYPE) \
-    TYPE *restrict
+#define RESTR_PTR(TYPE) TYPE *restrict
 
 
 /* Calculate static array element count */
-#define ARRAY_SIZE(arr) \
-    (sizeof((arr)) / sizeof(*(arr)))
+#define ARRAY_SIZE(arr) (sizeof((arr)) / sizeof(*(arr)))
 
 
 
-/* Check for Linux syscall failure */
-#define SYSFAIL(status) \
-    _UNLIKELY((ULONG)(status) >= (ULONG)(-MAX_ERRNO))
+/* Check for Linux syscall (failure) */
+#define SYSFAIL(status) UNLIKELY_((LONG)(status) < 0L)
 
-/* Check for Linux syscall success */
-#define SYSOK(status) \
-    (not SYSFAIL(status))
+/* Check for Linux syscall (success) */
+#define SYSOK(status) LIKELY_((LONG)(status) >= 0L)
 
 
 
@@ -149,27 +148,37 @@ typedef __SIZE_TYPE__        SIZE_T;
 #define FALSE ((BOOLEAN)0)
 #define TRUE  ((BOOLEAN)1)
 
-#define EXIT_SUCCESS 0
-#define EXIT_FAILURE 1
-
 
 /* System x64 call numbers */
 
-#define SYS_read          0
-#define SYS_write         1
-#define SYS_openat        257
-#define SYS_close         3
-#define SYS_poll          7
-#define SYS_socket        41
-#define SYS_connect       42
-#define SYS_exit_group    231
-#define SYS_getrandom     318
+#define SYS_read         0
+#define SYS_write        1
+#define SYS_openat       257
+#define SYS_close        3
+#define SYS_poll         7
+#define SYS_rt_sigaction 13
+#define SYS_socket       41
+#define SYS_connect      42
+#define SYS_getrandom    318
 
 
 /* */
 
-#define EINTR     4
-#define MAX_ERRNO 4095
+#define SIGHUP  1
+#define SIGPIPE 13
+#define SIGCHLD 17
+
+#define SIG_IGN ((VOID*)1)
+
+typedef struct kernel_sigaction_t {
+    VOID    *sa_handler;
+    ULONG    sa_flags;
+    VOID    *sa_restorer;
+    ULONG    sa_mask;
+} kernel_sigaction_t;
+
+
+#define EINTR 4
 
 #define GRND_NONBLOCK 1
 
@@ -192,8 +201,8 @@ typedef __SIZE_TYPE__        SIZE_T;
     ((UINT32)((UINT8)(d)) << 24)      \
 )
 
-#define htons(x) _GCC_FUNC(bswap16)((UINT16)(x))
-#define htonl(x) _GCC_FUNC(bswap32)((UINT32)(x))
+#define htons(x) GCC_FUNC_(bswap16)((UINT16)(x))
+#define htonl(x) GCC_FUNC_(bswap32)((UINT32)(x))
 
 #define AF_INET     2
 #define SOCK_STREAM 1
@@ -205,12 +214,12 @@ typedef __SIZE_TYPE__        SIZE_T;
 #define SOCK_RETRY_MASK  4095UL
 
 
-struct sockaddr_in {
+typedef struct sockaddr_in_t {
     UINT16    sin_family;
     UINT16    sin_port;
     UINT32    sin_addr;
     BYTE      sin_zero[8];
-};
+} sockaddr_in_t;
 
 
 
@@ -220,10 +229,10 @@ struct sockaddr_in {
  ************************************/
 
 
-#define _SYS_CALL_ENTRY(nm, ...) ({       \
+#define SYS_CALL_ENTRY_(nm, ...) ({       \
     DEC_REG(LONG, rax, nm);               \
                                           \
-    _GCC_ASM ("syscall\n\t"               \
+    GCC_ASM_ ("syscall\n\t"               \
         : "+a"(rax)                       \
         : __VA_ARGS__                     \
         : "memory", "cc", "rcx", "r11"    \
@@ -232,43 +241,41 @@ struct sockaddr_in {
     rax;                                  \
 })
 
-#define _SYS_CALL_0(nm, ...) \
-    _SYS_CALL_ENTRY(nm, ##__VA_ARGS__)
+#define SYS_CALL_0_(nm, ...) SYS_CALL_ENTRY_(nm, ##__VA_ARGS__)
 
 
-#define _SYS_CALL_1(nm, a1, ...) ({              \
+#define SYS_CALL_1_(nm, a1, ...) ({              \
     DEC_REG(LONG, rdi, a1);                      \
-    _SYS_CALL_0(nm, "r"(rdi), ##__VA_ARGS__);    \
+    SYS_CALL_0_(nm, "r"(rdi), ##__VA_ARGS__);    \
 })
 
-#define _SYS_CALL_2(nm, a1, a2, ...) ({              \
+#define SYS_CALL_2_(nm, a1, a2, ...) ({              \
     DEC_REG(LONG, rsi, a2);                          \
-    _SYS_CALL_1(nm, a1, "r"(rsi), ##__VA_ARGS__);    \
+    SYS_CALL_1_(nm, a1, "r"(rsi), ##__VA_ARGS__);    \
 })
 
-#define _SYS_CALL_3(nm, a1, a2, a3, ...) ({              \
+#define SYS_CALL_3_(nm, a1, a2, a3, ...) ({              \
     DEC_REG(LONG, rdx, a3);                              \
-    _SYS_CALL_2(nm, a1, a2, "r"(rdx), ##__VA_ARGS__);    \
+    SYS_CALL_2_(nm, a1, a2, "r"(rdx), ##__VA_ARGS__);    \
 })
 
-#define _SYS_CALL_4(nm, a1, a2, a3, a4, ...) ({              \
+#define SYS_CALL_4_(nm, a1, a2, a3, a4, ...) ({              \
     DEC_REG(LONG, r10, a4);                                  \
-    _SYS_CALL_3(nm, a1, a2, a3, "r"(r10), ##__VA_ARGS__);    \
+    SYS_CALL_3_(nm, a1, a2, a3, "r"(r10), ##__VA_ARGS__);    \
 })
 
-#define _SYS_CALL_5(nm, a1, a2, a3, a4, a5, ...) ({             \
+#define SYS_CALL_5_(nm, a1, a2, a3, a4, a5, ...) ({             \
     DEC_REG(LONG, r8, a5);                                      \
-    _SYS_CALL_4(nm, a1, a2, a3, a4, "r"(r8), ##__VA_ARGS__);    \
+    SYS_CALL_4_(nm, a1, a2, a3, a4, "r"(r8), ##__VA_ARGS__);    \
 })
 
-#define _SYS_CALL_6(nm, a1, a2, a3, a4, a5, a6, ...) ({             \
+#define SYS_CALL_6_(nm, a1, a2, a3, a4, a5, a6, ...) ({             \
     DEC_REG(LONG, r9, a6);                                          \
-    _SYS_CALL_5(nm, a1, a2, a3, a4, a5, "r"(r9), ##__VA_ARGS__);    \
+    SYS_CALL_5_(nm, a1, a2, a3, a4, a5, "r"(r9), ##__VA_ARGS__);    \
 })
 
 
-#define _SYS_CALL_SELECTOR(_0, _1, _2, _3, _4, _5, _6, N, ...) \
-    _SYS_CALL_##N
+#define SYS_CALL_SELECTOR_(_0, _1, _2, _3, _4, _5, _6, N, ...) SYS_CALL_##N##_
 
 
 
@@ -278,39 +285,37 @@ struct sockaddr_in {
  **************************************/
 
 
-#define syscall(nm, ...)                           \
-    _SYS_CALL_SELECTOR(nm, ##__VA_ARGS__,          \
-        6, 5, 4, 3, 2, 1, 0)(nm, ##__VA_ARGS__)
+#define syscall_(num, ...)                          \
+    SYS_CALL_SELECTOR_(num, ##__VA_ARGS__,          \
+        6, 5, 4, 3, 2, 1, 0)(num, ##__VA_ARGS__)
 
 
 #define read(fd, buf, count) \
-    syscall(SYS_read, (fd), (buf), (count))
+    syscall_(SYS_read, (fd), (buf), (count))
 
 #define write(fd, buf, count) \
-    syscall(SYS_write, (fd), (buf), (count))
+    syscall_(SYS_write, (fd), (buf), (count))
 
 #define openat(dfd, filename, flags, ...) \
-    syscall(SYS_openat, (dfd), (filename), (flags), ##__VA_ARGS__)
+    syscall_(SYS_openat, (dfd), (filename), (flags), ##__VA_ARGS__)
 
 #define open(filename, flags, ...) \
     openat(AT_FDCWD, (filename), (flags), ##__VA_ARGS__)
 
 #define close(fd) \
-    syscall(SYS_close, (fd))
+    syscall_(SYS_close, (fd))
 
-#define sys_sleep(ms) \
-    syscall(SYS_poll, 0, 0, (ms))
+#define sys_sleep_ms(ms) \
+    syscall_(SYS_poll, 0, 0, (ms))
+
+#define rt_sigaction(signum, act, oldact, sigsetsize) \
+    syscall_(SYS_rt_sigaction, (signum), (act), (oldact), (sigsetsize))
 
 #define socket(domain, type, protocol) \
-    syscall(SYS_socket, (domain), (type), (protocol))
+    syscall_(SYS_socket, (domain), (type), (protocol))
 
 #define connect(sockfd, addr, addrlen) \
-    syscall(SYS_connect, (sockfd), (addr), (addrlen))
-
-#define exit_group(status) do {           \
-    syscall(SYS_exit_group, (status));    \
-    _UNREACHABLE();                       \
-} while (0)
+    syscall_(SYS_connect, (sockfd), (addr), (addrlen))
 
 #define getrandom(buf, count, flags) \
-    syscall(SYS_getrandom, (buf), (count), (flags))
+    syscall_(SYS_getrandom, (buf), (count), (flags))

@@ -1,3 +1,16 @@
+#=================================#
+# [ OWNER ]
+#     CREATOR  : Vladislav Khudash
+#     AGE      : 18
+#     LOCATION : Ukraine
+#
+# [ PINFO ]
+#     DATE     : 09.11.2026
+#     PROJECT  : LINUX-BOT (SESSION)
+#     PLATFORM : LINUX, WIN32
+#=================================#
+
+
 
 
 import sys    as libSys
@@ -29,9 +42,7 @@ CMD_REG_KEY = 200
 
 
 def build_response(cmd_code: int) -> bytes:
-    target_text_len = SIZE_HTTP_HDR_CMD - 4
-    header = (HTTP_HDR_CMD % cmd_code).ljust(target_text_len, b' ') + b"\r\n\r\n"
-    assert len(header) == SIZE_HTTP_HDR_CMD, f"Размер хедера поплыл: {len(header)}"
+    header = (HTTP_HDR_CMD % cmd_code) + b"\r\n\r\n"
     return header
 
 
@@ -48,6 +59,7 @@ def start_server():
         conn, addr = sock.accept()
 
         with conn:
+            print(conn.recv(1000))
             conn.sendall(build_response(200))
 
 
