@@ -16,19 +16,27 @@
  ************************************/
 
 
-#if (!defined(__GNUC__) || defined(__clang__))
+#if !defined(__GNUC__) || defined(__clang__)
     #error "lindef.h: GCC compiler is required."
 #endif
 
-#if (!defined(__linux__))
+#if defined(__STRICT_ANSI__)
+    #error "lindef.h: GNU extensions required."
+#endif
+
+#if !defined(__STDC_VERSION__) || (__STDC_VERSION__ < 201112L)
+    #error "lindef.h: C11 standard or higher is required."
+#endif
+
+#if !defined(__linux__)
     #error "lindef.h: Linux OS is required."
 #endif
 
-#if (!defined(__x86_64__))
+#if !defined(__x86_64__)
     #error "lindef.h: x86_64 architecture is required."
 #endif
 
-#if (!defined(__LP64__))
+#if !defined(__LP64__)
     #error "lindef.h: LP64 ABI is required."
 #endif
 

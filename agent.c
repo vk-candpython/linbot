@@ -24,7 +24,7 @@ INTERNAL AGENT DECLARATIONS */
 #include "agent.h"
 
 
-#if (!defined(LINBOT_AGENT_H) || !defined(LINBOT_LINDEF_H))
+#if !(defined(LINBOT_AGENT_H) && defined(LINBOT_LINDEF_H))
     #error "agent.c: agent.h / lindef.h not included."
 #endif
 
