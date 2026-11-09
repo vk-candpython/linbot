@@ -27,22 +27,22 @@ typedef UINT64 idsz_t;
 typedef UINT8  cmdsz_t;
 
 
-typedef PACKED_STRUCT_ handshake_t {
+DEC_STRUCT_PACKED (handshake_t) {
     idsz_t serverID;
     idsz_t sessionID;
     BYTE   nonce[LB_NONCE_SIZE];
-} handshake_t;
+};
 
-typedef PACKED_STRUCT_ server_cmd_t {
+DEC_STRUCT_PACKED (server_cmd_t) {
     idsz_t  id;
     cmdsz_t command;
     UINT32  len;
-} server_cmd_t;
+};
 
-typedef PACKED_STRUCT_ agent_cmd_t {
+DEC_STRUCT_PACKED (agent_cmd_t) {
     idsz_t id;
     UINT32 len;
-} agent_cmd_t;
+};
 
 
 #define LB_CMD_REG     404

@@ -105,8 +105,13 @@ typedef __SIZE_TYPE__        SIZE_T;
 })
 
 
-/* Suppress struct padding (no alignment gaps) */
-#define PACKED_STRUCT_ struct GCC_ATTR_(packed)
+/* Structure declaration helper */
+#define DEC_STRUCT(name) \
+    typedef struct name name; struct name
+
+/* Packed structure declaration helper (no alignment gaps) */
+#define DEC_STRUCT_PACKED(name) \
+    typedef struct name name; struct GCC_ATTR_(packed) name
 
 /* Function declaration helper */
 #define DEC_FUNC(TYPE) \
@@ -175,12 +180,12 @@ typedef __SIZE_TYPE__        SIZE_T;
 
 #define SIG_IGN ((VOID*)1)
 
-typedef struct kernel_sigaction_t {
+DEC_STRUCT (kernel_sigaction_t) {
     VOID* sa_handler;
     ULONG sa_flags;
     VOID* sa_restorer;
     ULONG sa_mask;
-} kernel_sigaction_t;
+};
 
 
 /* Mman mapping flags */
@@ -229,12 +234,12 @@ typedef struct kernel_sigaction_t {
 #define SOCK_RETRY_MASK  4095UL
 
 
-typedef struct sockaddr_in_t {
+DEC_STRUCT (sockaddr_in_t) {
     UINT16 sin_family;
     UINT16 sin_port;
     UINT32 sin_addr;
     BYTE   sin_zero[8];
-} sockaddr_in_t;
+};
 
 
 
