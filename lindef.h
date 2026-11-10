@@ -165,17 +165,17 @@ typedef __SIZE_TYPE__        SIZE_T;
 
 /* System x64 call numbers */
 
-#define SYS_read         0
-#define SYS_write        1
-#define SYS_openat       257
-#define SYS_close        3
-#define SYS_poll         7
-#define SYS_mmap         9
-#define SYS_munmap       11
-#define SYS_rt_sigaction 13
-#define SYS_socket       41
-#define SYS_connect      42
-#define SYS_getrandom    318
+#define SYSNUM_read         0
+#define SYSNUM_write        1
+#define SYSNUM_openat       257
+#define SYSNUM_close        3
+#define SYSNUM_poll         7
+#define SYSNUM_mmap         9
+#define SYSNUM_munmap       11
+#define SYSNUM_rt_sigaction 13
+#define SYSNUM_socket       41
+#define SYSNUM_connect      42
+#define SYSNUM_getrandom    318
 
 #define EINTR 4
 
@@ -188,7 +188,7 @@ typedef __SIZE_TYPE__        SIZE_T;
 
 #define SIG_IGN ((VOID*)1)
 
-DEC_STRUCT (kernel_sigaction_t) {
+DEC_STRUCT (kernel_sigaction) {
     VOID* sa_handler;
     ULONG sa_flags;
     VOID* sa_restorer;
@@ -201,7 +201,7 @@ DEC_STRUCT (kernel_sigaction_t) {
 #define PROT_READ  0x1
 #define PROT_WRITE 0x2
 
-#define MAP_PRIVATE	  0x02
+#define MAP_PRIVATE   0x02
 #define MAP_ANONYMOUS 0x20
 
 #define MAP_FAILED ((VOID*)-1)
@@ -242,7 +242,7 @@ DEC_STRUCT (kernel_sigaction_t) {
 #define SOCK_RETRY_MASK  4095UL
 
 
-DEC_STRUCT (sockaddr_in_t) {
+DEC_STRUCT (sockaddr_in) {
     UINT16 sin_family;
     UINT16 sin_port;
     UINT32 sin_addr;
@@ -313,46 +313,46 @@ DEC_STRUCT (sockaddr_in_t) {
  **************************************/
 
 
-#define syscall_(num, ...)                          \
+#define sys_call(num, ...)                          \
     SYS_CALL_SELECTOR_(num, ##__VA_ARGS__,          \
         6, 5, 4, 3, 2, 1, 0)(num, ##__VA_ARGS__)
 
 
-#define read(fd, buf, count) \
-    syscall_(SYS_read, (fd), (buf), (count))
+#define sys_read(fd, buf, count) \
+    sys_call(SYSNUM_read, (fd), (buf), (count))
 
-#define write(fd, buf, count) \
-    syscall_(SYS_write, (fd), (buf), (count))
+#define sys_write(fd, buf, count) \
+    sys_call(SYSNUM_write, (fd), (buf), (count))
 
-#define openat(dfd, filename, flags, ...) \
-    syscall_(SYS_openat, (dfd), (filename), (flags), ##__VA_ARGS__)
+#define sys_openat(dfd, filename, flags, ...) \
+    sys_call(SYSNUM_openat, (dfd), (filename), (flags), ##__VA_ARGS__)
 
-#define open(filename, flags, ...) \
-    openat(AT_FDCWD, (filename), (flags), ##__VA_ARGS__)
+#define sys_open(filename, flags, ...) \
+    sys_openat(AT_FDCWD, (filename), (flags), ##__VA_ARGS__)
 
-#define close(fd) \
-    syscall_(SYS_close, (fd))
+#define sys_close(fd) \
+    sys_call(SYSNUM_close, (fd))
 
 #define sys_sleep_ms(ms) \
-    syscall_(SYS_poll, 0, 0, (ms))
+    sys_call(SYSNUM_poll, 0, 0, (ms))
 
-#define mmap(addr, len, prot, flags, fd, offset) \
-    syscall_(SYS_mmap, (addr), (len), (prot), (flags), (fd), (offset))
+#define sys_mmap(addr, len, prot, flags, fd, offset) \
+    sys_call(SYSNUM_mmap, (addr), (len), (prot), (flags), (fd), (offset))
 
-#define munmap(addr, len) \
-    syscall_(SYS_munmap, (addr), (len))
+#define sys_munmap(addr, len) \
+    sys_call(SYSNUM_munmap, (addr), (len))
 
-#define rt_sigaction(signum, act, oldact, sigsetsize) \
-    syscall_(SYS_rt_sigaction, (signum), (act), (oldact), (sigsetsize))
+#define sys_rt_sigaction(signum, act, oldact, sigsetsize) \
+    sys_call(SYSNUM_rt_sigaction, (signum), (act), (oldact), (sigsetsize))
 
-#define socket(domain, type, protocol) \
-    syscall_(SYS_socket, (domain), (type), (protocol))
+#define sys_socket(domain, type, protocol) \
+    sys_call(SYSNUM_socket, (domain), (type), (protocol))
 
-#define connect(sockfd, addr, addrlen) \
-    syscall_(SYS_connect, (sockfd), (addr), (addrlen))
+#define sys_connect(sockfd, addr, addrlen) \
+    sys_call(SYSNUM_connect, (sockfd), (addr), (addrlen))
 
-#define getrandom(buf, count) \
-    syscall_(SYS_getrandom, (buf), (count), GRND_NONBLOCK)
+#define sys_urandom(buf, count) \
+    sys_call(SYSNUM_getrandom, (buf), (count), GRND_NONBLOCK)
 
 
 #endif /* LINBOT_LINDEF_H */
